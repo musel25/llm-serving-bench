@@ -1,0 +1,7 @@
+[project]
+name = "llm-serving-bench"
+version = "0.1.0"
+description = "Benchmarking vLLM and SGLang inference serving for Llama-3 8B / Mistral-7B on Modal GPU containers: tokens/sec, p50/p99 latency, and cost-per-million-tokens under varying QPS."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
