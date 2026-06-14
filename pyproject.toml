@@ -5,6 +5,7 @@ description = "Benchmarking vLLM and SGLang inference serving for Llama-3 8B / M
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "matplotlib>=3.11.0",
     "openai>=2.41.1",
 ]
 

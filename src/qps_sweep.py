@@ -25,6 +25,7 @@ from time import perf_counter
 from openai import AsyncOpenAI
 
 from src.concurrent_requests import measure_one_async
+from src.cost import dollars_per_million_tokens
 from src.measurement import Measurement
 from src.run_summary import RunSummary, summarize
 
@@ -102,6 +103,8 @@ if __name__ == "__main__":
     prompt = "Say hello in one short sentence."
     concurrency_levels = [1, 2, 4, 8, 16, 32]  # 32 = the container's max_inputs
     requests_per_level = 40
+    gpu_dollars_per_hour = 0.59  # Modal T4 list price; see PLAN.md "endpoint we measure"
+    chart_path = "sweep.png"
 
     # Warm up first: the endpoint scales to zero after 5 idle min, and the first request
     # then pays a ~3.5 min cold start. One throwaway call absorbs that so it doesn't land
@@ -114,15 +117,41 @@ if __name__ == "__main__":
         sweep(client, model, prompt, concurrency_levels, requests_per_level)
     )
 
-    header = f"{'conc':>4}  {'qps':>7}  {'p50 (s)':>9}  {'p99 (s)':>9}  {'tok/s':>8}"
+    header = (
+        f"{'conc':>4}  {'qps':>7}  {'p50 (s)':>9}  {'p99 (s)':>9}  "
+        f"{'tok/s':>8}  {'$/Mtok':>8}"
+    )
     print(header)
     print("-" * len(header))
     for p in points:
+        cost = dollars_per_million_tokens(
+            p.summary.throughput_tokens_per_second, gpu_dollars_per_hour
+        )
         print(
             f"{p.concurrency:>4}  "
             f"{p.achieved_qps:>7.2f}  "
             f"{p.summary.p50_latency_s:>9.3f}  "
             f"{p.summary.p99_latency_s:>9.3f}  "
-            f"{p.summary.throughput_tokens_per_second:>8.1f}"
+            f"{p.summary.throughput_tokens_per_second:>8.1f}  "
+            f"{cost:>8.4f}"
         )
     print(f"\n({requests_per_level} requests per level)")
+
+    # The headline number: the cheapest level is where batching has best amortised the
+    # flat hourly GPU cost over generated tokens.
+    cheapest = min(
+        points,
+        key=lambda p: dollars_per_million_tokens(
+            p.summary.throughput_tokens_per_second, gpu_dollars_per_hour
+        ),
+    )
+    cheapest_cost = dollars_per_million_tokens(
+        cheapest.summary.throughput_tokens_per_second, gpu_dollars_per_hour
+    )
+    print(f"cheapest: ${cheapest_cost:.4f}/Mtok at concurrency {cheapest.concurrency}")
+
+    # Chart is optional reporting; import it lazily so the library never forces matplotlib.
+    from src.sweep_plot import plot_sweep
+
+    saved = plot_sweep(points, gpu_dollars_per_hour, chart_path)
+    print(f"chart written to {saved}")
