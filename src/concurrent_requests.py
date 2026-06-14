@@ -16,6 +16,7 @@ from time import perf_counter
 from openai import AsyncOpenAI
 
 from src.measurement import Measurement
+from src.run_summary import summarize
 
 
 async def measure_one_async(client: AsyncOpenAI, model: str, prompt: str) -> Measurement:
@@ -65,13 +66,15 @@ if __name__ == "__main__":
     measurements = asyncio.run(measure_many(client, model, prompt, n))
     wall_s = perf_counter() - start
 
-    slowest_s = max(m.latency_s for m in measurements)
+    summary = summarize(measurements, wall_s)
     sum_of_latencies_s = sum(m.latency_s for m in measurements)
-    total_tokens = sum(m.completion_tokens for m in measurements)
 
     print(f"fired {n} requests concurrently")
     print(f"wall-clock total : {wall_s:.3f} s")
-    print(f"slowest single   : {slowest_s:.3f} s   <- wall should be close to THIS")
     print(f"sum of latencies : {sum_of_latencies_s:.3f} s   <- what doing them one-by-one would cost")
-    print(f"total out tokens : {total_tokens}")
-    print(f"throughput       : {total_tokens / wall_s:.1f} tokens/sec (aggregate)")
+    print()
+    print(f"requests         : {summary.request_count}")
+    print(f"p50 latency      : {summary.p50_latency_s:.3f} s   <- typical request")
+    print(f"p99 latency      : {summary.p99_latency_s:.3f} s   <- tail (worst ~1%)")
+    print(f"output tokens    : {summary.total_completion_tokens}")
+    print(f"throughput       : {summary.throughput_tokens_per_second:.1f} tokens/sec (aggregate)")
