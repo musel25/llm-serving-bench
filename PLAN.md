@@ -15,7 +15,7 @@ end to end, plus a short writeup.
 
 ## Now
 
-mode: BUILD · current: slice 2 (fire N at once, asyncio) · updated: 2026-06-14
+mode: BUILD · current: slice 3 (aggregate → p50/p99 + throughput) · updated: 2026-06-14
 
 ## The endpoint we measure (lives in `a2a-scratch`, not here)
 
@@ -29,11 +29,13 @@ mode: BUILD · current: slice 2 (fire N at once, asyncio) · updated: 2026-06-14
 - [x] 1. **one request, timed** — DONE (8a9957f): sync `openai` call → `measure_one`
       returns end-to-end latency + `completion_tokens`, with a `tokens_per_second`
       property. Proven against the live endpoint; unit test green.
-- [ ] 2. **fire N at once (asyncio)** ← NEXT — `AsyncOpenAI` + `asyncio.gather` over ~10
-      concurrent requests; collect each latency. Learn: `async`/`await`, why I/O-bound
-      concurrency works here. (Opens with a no-network `asyncio.sleep` spike.)
-- [ ] 3. **aggregate → p50/p99 + throughput** — list of (latency, tokens) → percentiles
-      and total tokens/sec. Learn: what p50/p99 mean & how computed; latency vs throughput.
+- [x] 2. **fire N at once (asyncio)** — DONE (df88ba4): `AsyncOpenAI` + `asyncio.gather`
+      in `src/concurrent_requests.py` fires N concurrent requests, returns one Measurement
+      each (in order). Proven live: wall-clock ≈ slowest request, not the sum. (`Measurement`
+      extracted to its own module en route.)
+- [ ] 3. **aggregate → p50/p99 + throughput** ← NEXT — list of (latency, tokens) →
+      percentiles and total tokens/sec. Learn: what p50/p99 mean & how computed;
+      latency vs throughput.
 - [ ] 4. **QPS sweep** — drive rising load (concurrency 1→32) and record the metric curve.
       Learn: how latency degrades as QPS climbs — the actual benchmark. Warm up first.
 - [ ] 5. **cost/M-tokens + writeup** — throughput × T4 price → $/1M tokens; honest README.
@@ -55,7 +57,7 @@ mode: BUILD · current: slice 2 (fire N at once, asyncio) · updated: 2026-06-14
 
 ## What's fake / unproven
 
-- Slice 1 (`src/timed_request.py`) is proven. Nothing else built yet.
+- Slices 1–2 proven (`src/timed_request.py`, `src/concurrent_requests.py`). Nothing else built yet.
 - Reproducibility caveat: the endpoint lives in another repo. A fresh clone of this repo
   can't stand up serving on its own (acceptable for solo learning; note it in the writeup).
 - Endpoint may be scaled down (cold) — slice 1 must expect a ~3.5 min first response.
