@@ -15,7 +15,7 @@ end to end, plus a short writeup.
 
 ## Now
 
-mode: BUILD · current: slice 4 (QPS sweep) · updated: 2026-06-14
+mode: BUILD · current: slice 5 (cost/M-tokens + writeup) · updated: 2026-06-14
 
 ## The endpoint we measure (lives in `a2a-scratch`, not here)
 
@@ -37,9 +37,12 @@ mode: BUILD · current: slice 4 (QPS sweep) · updated: 2026-06-14
       reduces a batch to a `RunSummary` (p50/p99 latency via nearest-rank `percentile`,
       aggregate throughput = total tokens ÷ wall-clock). Pure/no-network; 6 unit tests.
       Live runner now prints the summary.
-- [ ] 4. **QPS sweep** ← NEXT — drive rising load (concurrency 1→32) and record the metric
-      curve. Learn: how latency degrades as QPS climbs — the actual benchmark. Warm up first.
-- [ ] 5. **cost/M-tokens + writeup** — throughput × T4 price → $/1M tokens; honest README.
+- [x] 4. **QPS sweep** — DONE (6acfed7): `src/qps_sweep.py` runs the load across
+      concurrency levels 1→32 (closed-loop, fixed total per level via `asyncio.Semaphore`)
+      and returns one `SweepPoint` (concurrency, achieved_qps, RunSummary) per level —
+      the benchmark curve, printed as a table. 3 unit tests incl. one proving the
+      semaphore caps in-flight. Proven live (warm-up call absorbs cold start).
+- [ ] 5. **cost/M-tokens + writeup** ← NEXT — throughput × T4 price → $/1M tokens; honest README.
 
 ## Not building yet
 
@@ -61,11 +64,20 @@ mode: BUILD · current: slice 4 (QPS sweep) · updated: 2026-06-14
 - 2026-06-14 — **throughput takes `wall_clock_s` as an argument**, not derived from the
   measurements: requests overlap, so `sum(latencies)` overcounts. System throughput needs
   the batch's real elapsed time, which only the caller knows.
+- 2026-06-14 — **closed-loop load (fix concurrency), sustained via `asyncio.Semaphore`**,
+  not open-loop (fix req/sec) and not one burst per level. Closed-loop matches "concurrency
+  1→32" and can't pile up unbounded in-flight when the server saturates. A semaphore holds
+  C requests in flight while a fixed total (40) flows through, so every level gets the same,
+  large enough sample → comparable percentiles. (Settled the slice-4 open question.)
 
 ## What's fake / unproven
 
-- Slices 1–3 proven. p99 is coarse at small N (nearest-rank → p99 of 10 ≈ the max);
-  only meaningful once slice 4 fires larger batches.
+- Slices 1–4 proven. Slice 4 fires 40 requests/level, so p99 is now over a real sample
+  (nearest-rank p99 of 40 = the 40th value) rather than ≈ the max of 10.
+- `achieved_qps` of the lowest level can read low if warm-up didn't fully warm the endpoint
+  (its first request eats the residual). Mitigated by the warm-up call; document in writeup.
+- `requests_per_level` and the level list are hardcoded in `__main__` (not CLI args) — fine
+  for now; revisit if slice 5's writeup needs different load profiles.
 - `summarize` doesn't guard `wall_clock_s <= 0` (caller always passes a perf_counter delta);
   add a guard if it ever becomes external input (slice 4/5).
 - Reproducibility caveat: the endpoint lives in another repo. A fresh clone of this repo
