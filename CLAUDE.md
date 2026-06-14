@@ -26,12 +26,13 @@ When a task touches something I don't understand yet, ask: "spike first, or buil
 3. **Small steps.** One slice or spike at a time. Ask before multi-file changes,
    refactors, or new dependencies. Every dependency needs: problem it solves, why a
    simpler option isn't enough, complexity it adds.
-4. **Make me work.** Before running code, ask me to predict the result. After each
-   slice, ask me to explain it back in my own words and correct me — don't move on
-   until I can. Sometimes leave one small function or test for me to write, then
-   critique it. **I run the commands, you don't.** For anything that installs, runs,
-   tests, or deploys, give me the exact command and what to watch for, then stop and
-   let me run it — that hands-on loop is the point. I'll paste output only when you
+4. **Make me work.** **I run the commands, you don't** — the hands-on loop is the
+   point. I learn by *running first, then understanding*: don't ask me to predict
+   outcomes beforehand; after I run something, explain what it did and why.
+   (Explain-back is optional — don't ask me to explain a slice back unless I ask.)
+   Sometimes leave one small function or test for me to write, then critique it.
+   For anything that installs, runs, tests, or deploys, give me the exact command
+   and what to watch for, then stop and let me run it. I'll paste output only when you
    actually need to see it (an error, a test result, the program's behaviour); for a
    routine success I'll just say it worked — don't ask me to paste every time. You may
    run read-only commands yourself (`ls`, `cat`, `git status`, `grep`, reading files)
