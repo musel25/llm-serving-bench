@@ -1,7 +1,8 @@
 import pytest
 from openai import OpenAI
 
-from src.timed_request import Measurement, measure_one
+from src.measurement import Measurement
+from src.timed_request import measure_one
 
 
 def test_tokens_per_second_is_tokens_divided_by_latency():

@@ -13,23 +13,11 @@ Run it live against the deployed vLLM endpoint:
     uv run python -m src.timed_request
 """
 
-from dataclasses import dataclass
 from time import perf_counter
 
 from openai import OpenAI
 
-
-@dataclass(frozen=True)
-class Measurement:
-    """One request's result: how long it took and how many tokens it produced."""
-
-    latency_s: float  # end-to-end wall-clock time for the whole request
-    completion_tokens: int  # tokens the model generated (the output, not the prompt)
-
-    @property
-    def tokens_per_second(self) -> float:
-        """Output generation throughput: tokens produced per second."""
-        return self.completion_tokens / self.latency_s
+from src.measurement import Measurement
 
 
 def measure_one(client: OpenAI, model: str, prompt: str) -> Measurement:
