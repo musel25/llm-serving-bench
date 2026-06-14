@@ -15,7 +15,7 @@ end to end, plus a short writeup.
 
 ## Now
 
-mode: BUILD · current: slice 5 (cost/M-tokens + writeup) · updated: 2026-06-14
+mode: BUILD · current: core goal REACHED through slice 5 · updated: 2026-06-14
 
 ## The endpoint we measure (lives in `a2a-scratch`, not here)
 
@@ -42,7 +42,11 @@ mode: BUILD · current: slice 5 (cost/M-tokens + writeup) · updated: 2026-06-14
       and returns one `SweepPoint` (concurrency, achieved_qps, RunSummary) per level —
       the benchmark curve, printed as a table. 3 unit tests incl. one proving the
       semaphore caps in-flight. Proven live (warm-up call absorbs cold start).
-- [ ] 5. **cost/M-tokens + writeup** ← NEXT — throughput × T4 price → $/1M tokens; honest README.
+- [x] 5. **cost/M-tokens + writeup** — DONE: `src/cost.py` (`dollars_per_million_tokens`,
+      5 unit tests) turns throughput × $0.59/hr T4 into $/Mtok; `src/sweep_plot.py` renders
+      the sweep to `sweep.png` (matplotlib). Sweep runner prints a `$/Mtok` column + cheapest
+      headline. README rewritten with the real result: ~$4.75/M (conc 1) → ~$0.22/M (conc 32),
+      ~20× cheaper as batching saturates the GPU.
 
 ## Not building yet
 
@@ -69,11 +73,23 @@ mode: BUILD · current: slice 5 (cost/M-tokens + writeup) · updated: 2026-06-14
   1→32" and can't pile up unbounded in-flight when the server saturates. A semaphore holds
   C requests in flight while a fixed total (40) flows through, so every level gets the same,
   large enough sample → comparable percentiles. (Settled the slice-4 open question.)
+- 2026-06-14 — **cost reported per-level, not as one headline only** ($/Mtok column +
+  cheapest line). Per-level is where the lesson lives: flat hourly GPU cost ÷ rising
+  throughput → cost collapses as the GPU saturates. `dollars_per_million_tokens` is pure
+  (throughput × price), independent of the sweep.
+- 2026-06-14 — **matplotlib added** (first non-openai dep). Problem: a table doesn't show
+  the latency/throughput bend at a glance and can't be embedded in the writeup. Simpler
+  options rejected: table-only (no graphic), terminal ASCII (can't embed). `sweep_plot.py`
+  imports it; the sweep library imports it lazily (only in `__main__`) so the numbers path
+  stays dep-free.
 
 ## What's fake / unproven
 
-- Slices 1–4 proven. Slice 4 fires 40 requests/level, so p99 is now over a real sample
-  (nearest-rank p99 of 40 = the 40th value) rather than ≈ the max of 10.
+- Slices 1–5 proven. Slice 4 fires 40 requests/level, so p99 is now over a real sample —
+  but nearest-rank p99 of 40 = the 40th (max) value, so it's the single worst request and
+  swings with one outlier (visible as the conc-1 p99 spike in sweep.png).
+- Throughput was still rising at concurrency 32, so the T4 wasn't saturated; the measured
+  ~$0.22/M cost floor is an upper bound — higher concurrency would likely be cheaper.
 - `achieved_qps` of the lowest level can read low if warm-up didn't fully warm the endpoint
   (its first request eats the residual). Mitigated by the warm-up call; document in writeup.
 - `requests_per_level` and the level list are hardcoded in `__main__` (not CLI args) — fine
